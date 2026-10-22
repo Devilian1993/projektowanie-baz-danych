@@ -19,10 +19,10 @@ CHECK (
     VALUE ~* '^[A-Za-z0-9._+%-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$'
 );
 
--- Phone number (must contain at least 9 digits, allows notes)
-CREATE DOMAIN valid_phone AS VARCHAR(100)
+-- Phone number (contains only digits)
+CREATE DOMAIN valid_phone AS VARCHAR(15)
 CHECK (
-    length(regexp_replace(VALUE, '\D', '', 'g')) >= 9
+    VALUE ~ '^[0-9]{9,15}$'
 );
 
 -- Login (can contain letters, numbers, dashes and underscores)
