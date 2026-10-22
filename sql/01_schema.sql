@@ -95,7 +95,7 @@ CREATE TABLE nieudane_logowanie (
 
     CONSTRAINT pk_nieudane_logowanie  PRIMARY KEY (id_proby),
     CONSTRAINT fk_nieudane_konto      FOREIGN KEY (id_konta)
-        REFERENCES konto_uzytkownika (id_konta)
+        REFERENCES konto_uzytkownika (id_konta) ON DELETE CASCADE
 );
 
 -- Klient(id_klienta, #id_konta, imie, nazwisko, telefon,
@@ -112,7 +112,7 @@ CREATE TABLE klient (
     CONSTRAINT pk_klient        PRIMARY KEY (id_klienta),
     CONSTRAINT uq_klient_konto  UNIQUE (id_konta),
     CONSTRAINT fk_klient_konto  FOREIGN KEY (id_konta)
-        REFERENCES konto_uzytkownika (id_konta)
+        REFERENCES konto_uzytkownika (id_konta) ON DELETE CASCADE
 );
 
 -- Trener(id_trenera, #id_konta, imie, nazwisko, telefon,
@@ -130,7 +130,7 @@ CREATE TABLE trener (
     CONSTRAINT pk_trener          PRIMARY KEY (id_trenera),
     CONSTRAINT uq_trener_konto    UNIQUE (id_konta),
     CONSTRAINT fk_trener_konto    FOREIGN KEY (id_konta)
-        REFERENCES konto_uzytkownika (id_konta),
+        REFERENCES konto_uzytkownika (id_konta) ON DELETE CASCADE,
 
     CONSTRAINT chk_trener_stawka  CHECK (stawka_trening >= 0)
 );
@@ -152,9 +152,9 @@ CREATE TABLE trener_specjalizacja (
 
     CONSTRAINT pk_trener_specjalizacja  PRIMARY KEY (id_trenera, id_specjalizacji),
     CONSTRAINT fk_ts_trener             FOREIGN KEY (id_trenera)
-        REFERENCES trener (id_trenera),
+        REFERENCES trener (id_trenera) ON DELETE CASCADE,
     CONSTRAINT fk_ts_specjalizacja      FOREIGN KEY (id_specjalizacji)
-        REFERENCES specjalizacja (id_specjalizacji)
+        REFERENCES specjalizacja (id_specjalizacji) ON DELETE CASCADE
 );
 
 -- Recepcjonista(id_recepcjonisty, #id_konta, imie, nazwisko, telefon, data_zatrudnienia)
@@ -169,7 +169,7 @@ CREATE TABLE recepcjonista (
     CONSTRAINT pk_recepcjonista        PRIMARY KEY (id_recepcjonisty),
     CONSTRAINT uq_recepcjonista_konto  UNIQUE (id_konta),
     CONSTRAINT fk_recepcjonista_konto  FOREIGN KEY (id_konta)
-        REFERENCES konto_uzytkownika (id_konta)
+        REFERENCES konto_uzytkownika (id_konta) ON DELETE CASCADE
 );
 
 -- Pracownik_techniczny(id_technicznego, #id_konta, imie, nazwisko, telefon, data_zatrudnienia)
@@ -184,7 +184,7 @@ CREATE TABLE pracownik_techniczny (
     CONSTRAINT pk_pracownik_techniczny  PRIMARY KEY (id_technicznego),
     CONSTRAINT uq_techniczny_konto      UNIQUE (id_konta),
     CONSTRAINT fk_techniczny_konto      FOREIGN KEY (id_konta)
-        REFERENCES konto_uzytkownika (id_konta)
+        REFERENCES konto_uzytkownika (id_konta) ON DELETE CASCADE
 );
 
 -- Administrator(id_administratora, #id_konta, imie, nazwisko, telefon)
@@ -198,7 +198,7 @@ CREATE TABLE administrator (
     CONSTRAINT pk_administrator        PRIMARY KEY (id_administratora),
     CONSTRAINT uq_administrator_konto  UNIQUE (id_konta),
     CONSTRAINT fk_administrator_konto  FOREIGN KEY (id_konta)
-        REFERENCES konto_uzytkownika (id_konta)
+        REFERENCES konto_uzytkownika (id_konta) ON DELETE CASCADE
 );
 
 -- Wejscie(id_wejscia, #id_konta, data_wejscia, data_wyjscia, wynik, powod_odmowy)
@@ -212,7 +212,7 @@ CREATE TABLE wejscie (
 
     CONSTRAINT pk_wejscie             PRIMARY KEY (id_wejscia),
     CONSTRAINT fk_wejscie_konto       FOREIGN KEY (id_konta)
-        REFERENCES konto_uzytkownika (id_konta),
+        REFERENCES konto_uzytkownika (id_konta) ON DELETE CASCADE,
 
     CONSTRAINT chk_wejscie_przedz_cz  CHECK (data_wyjscia > data_wejscia),
     CONSTRAINT chk_wejscie_wynik      CHECK (wynik OR data_wyjscia IS NULL)
@@ -250,11 +250,11 @@ CREATE TABLE karnet (
 
     CONSTRAINT pk_karnet                PRIMARY KEY (id_karnetu),
     CONSTRAINT fk_karnet_klient         FOREIGN KEY (id_klienta)
-        REFERENCES klient (id_klienta),
+        REFERENCES klient (id_klienta) ON DELETE CASCADE,
     CONSTRAINT fk_karnet_typ            FOREIGN KEY (id_typu)
-        REFERENCES typ_karnetu (id_typu),
+        REFERENCES typ_karnetu (id_typu) ON DELETE RESTRICT,
     CONSTRAINT fk_karnet_recepcjonista  FOREIGN KEY (id_recepcjonisty)
-        REFERENCES recepcjonista (id_recepcjonisty),
+        REFERENCES recepcjonista (id_recepcjonisty) ON DELETE SET NULL,
 
     CONSTRAINT chk_karnet_cena          CHECK (cena >= 0),
     CONSTRAINT chk_karnet_przedz_cz     CHECK (data_rozpoczecia >= data_zakupu::date)
@@ -283,9 +283,9 @@ CREATE TABLE platnosc_karnet (
 
     CONSTRAINT pk_platnosc_karnet  PRIMARY KEY (id_platnosci, id_karnetu),
     CONSTRAINT fk_pk_platnosc      FOREIGN KEY (id_platnosci)
-        REFERENCES platnosc (id_platnosci),
+        REFERENCES platnosc (id_platnosci) ON DELETE CASCADE,
     CONSTRAINT fk_pk_karnet        FOREIGN KEY (id_karnetu)
-        REFERENCES karnet (id_karnetu)
+        REFERENCES karnet (id_karnetu) ON DELETE CASCADE
 );
 
 -- Stanowisko(id_stanowiska, #id_sali, nazwa, opis, status_dostepnosci)
@@ -299,7 +299,7 @@ CREATE TABLE stanowisko (
 
     CONSTRAINT pk_stanowisko       PRIMARY KEY (id_stanowiska),
     CONSTRAINT fk_stanowisko_sala  FOREIGN KEY (id_sali)
-        REFERENCES sala (id_sali)
+        REFERENCES sala (id_sali) ON DELETE CASCADE
 );
 
 -- Model_maszyny(id_modelu, #id_kategorii, producent, model, nazwa)
@@ -313,7 +313,7 @@ CREATE TABLE model_maszyny (
     CONSTRAINT pk_model_maszyny    PRIMARY KEY (id_modelu),
     CONSTRAINT uq_model_producent  UNIQUE (producent, model),
     CONSTRAINT fk_model_kategoria  FOREIGN KEY (id_kategorii)
-        REFERENCES kategoria_sprzetu (id_kategorii)
+        REFERENCES kategoria_sprzetu (id_kategorii) ON DELETE RESTRICT
 );
 
 -- Maszyna(id_maszyny, #id_stanowiska, #id_modelu, nr_seryjny,
@@ -330,9 +330,9 @@ CREATE TABLE maszyna (
     CONSTRAINT pk_maszyna             PRIMARY KEY (id_maszyny),
     CONSTRAINT uq_maszyna_nr          UNIQUE (id_modelu, nr_seryjny),
     CONSTRAINT fk_maszyna_stanowisko  FOREIGN KEY (id_stanowiska)
-        REFERENCES stanowisko (id_stanowiska),
+        REFERENCES stanowisko (id_stanowiska) ON DELETE SET NULL,
     CONSTRAINT fk_maszyna_model       FOREIGN KEY (id_modelu)
-        REFERENCES model_maszyny (id_modelu),
+        REFERENCES model_maszyny (id_modelu) ON DELETE CASCADE,
 
     CONSTRAINT chk_maszyna_stan       CHECK (stan_techniczny IN ('sprawna', 'uszkodzona', 'w_konserwacji')),
     CONSTRAINT chk_maszyna_przedz_cz  CHECK (data_konserwacji >= data_zakupu)
@@ -344,7 +344,7 @@ CREATE TABLE maszyna (
 CREATE TABLE zgloszenie_serwisowe (
     id_zgloszenia           INTEGER GENERATED BY DEFAULT AS IDENTITY,
     id_maszyny              INTEGER       NOT NULL,
-    id_konta_zglaszajacego  INTEGER       NOT NULL,
+    id_konta_zglaszajacego  INTEGER,
     id_technicznego         INTEGER,                  -- NULL: jeszcze nie przydzielono technika
     rodzaj                  VARCHAR(25)   NOT NULL,
     data_zgloszenia         TIMESTAMP     NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -355,11 +355,11 @@ CREATE TABLE zgloszenie_serwisowe (
 
     CONSTRAINT pk_zgloszenie_serwisowe   PRIMARY KEY (id_zgloszenia),
     CONSTRAINT fk_zgloszenie_maszyna     FOREIGN KEY (id_maszyny)
-        REFERENCES maszyna (id_maszyny),
+        REFERENCES maszyna (id_maszyny) ON DELETE CASCADE,
     CONSTRAINT fk_zgloszenie_konto       FOREIGN KEY (id_konta_zglaszajacego)
-        REFERENCES konto_uzytkownika (id_konta),
+        REFERENCES konto_uzytkownika (id_konta) ON DELETE SET NULL,
     CONSTRAINT fk_zgloszenie_techniczny  FOREIGN KEY (id_technicznego)
-        REFERENCES pracownik_techniczny (id_technicznego),
+        REFERENCES pracownik_techniczny (id_technicznego) ON DELETE SET NULL,
 
     CONSTRAINT chk_zgloszenie_rodzaj     CHECK (rodzaj IN ('rutynowa_konserwacja', 'uszkodzona_czesc', 'brakujaca_czesc', 'zuzyta_czesc')),
     CONSTRAINT chk_zgloszenie_start      CHECK (data_rozpoczecia >= data_zgloszenia),
@@ -383,9 +383,9 @@ CREATE TABLE trening_personalny (
 
     CONSTRAINT pk_trening_personalny  PRIMARY KEY (id_treningu),
     CONSTRAINT fk_trening_klient      FOREIGN KEY (id_klienta)
-        REFERENCES klient (id_klienta),
+        REFERENCES klient (id_klienta) ON DELETE CASCADE,
     CONSTRAINT fk_trening_trener      FOREIGN KEY (id_trenera)
-        REFERENCES trener (id_trenera),
+        REFERENCES trener (id_trenera) ON DELETE CASCADE,
 
     CONSTRAINT chk_trening_cena       CHECK (cena >= 0),
     CONSTRAINT chk_trening_przedz_cz  CHECK (czas_do > czas_od)
@@ -398,9 +398,9 @@ CREATE TABLE platnosc_trening (
 
     CONSTRAINT pk_platnosc_trening  PRIMARY KEY (id_platnosci, id_treningu),
     CONSTRAINT fk_pt_platnosc       FOREIGN KEY (id_platnosci)
-        REFERENCES platnosc (id_platnosci),
+        REFERENCES platnosc (id_platnosci) ON DELETE CASCADE,
     CONSTRAINT fk_pt_trening        FOREIGN KEY (id_treningu)
-        REFERENCES trening_personalny (id_treningu)
+        REFERENCES trening_personalny (id_treningu) ON DELETE CASCADE
 );
 
 -- Rezerwacja_stanowiska(id_rezerwacji, #id_stanowiska, #id_treningu,
@@ -417,9 +417,9 @@ CREATE TABLE rezerwacja_stanowiska (
 
     CONSTRAINT pk_rezerwacja_stanowiska  PRIMARY KEY (id_rezerwacji),
     CONSTRAINT fk_rezerwacja_stanowisko  FOREIGN KEY (id_stanowiska)
-        REFERENCES stanowisko (id_stanowiska),
+        REFERENCES stanowisko (id_stanowiska) ON DELETE CASCADE,
     CONSTRAINT fk_rezerwacja_trening     FOREIGN KEY (id_treningu)
-        REFERENCES trening_personalny (id_treningu),
+        REFERENCES trening_personalny (id_treningu) ON DELETE CASCADE,
 
     CONSTRAINT chk_rezerwacja_przedz_cz  CHECK (rez_do > rez_od)
 );
@@ -446,9 +446,9 @@ CREATE TABLE kwalifikacje_trenera (
 
     CONSTRAINT pk_kwalifikacje_trenera  PRIMARY KEY (id_trenera, id_rodzaju),
     CONSTRAINT fk_kw_trener             FOREIGN KEY (id_trenera)
-        REFERENCES trener (id_trenera),
+        REFERENCES trener (id_trenera) ON DELETE CASCADE,
     CONSTRAINT fk_kw_rodzaj             FOREIGN KEY (id_rodzaju)
-        REFERENCES rodzaj_zajec (id_rodzaju)
+        REFERENCES rodzaj_zajec (id_rodzaju) ON DELETE CASCADE
 );
 
 -- Zajecia_grupowe(id_zajec, #id_rodzaju, #id_sali, #id_trenera,
@@ -465,11 +465,11 @@ CREATE TABLE zajecia_grupowe (
 
     CONSTRAINT pk_zajecia_grupowe  PRIMARY KEY (id_zajec),
     CONSTRAINT fk_zajecia_rodzaj   FOREIGN KEY (id_rodzaju)
-        REFERENCES rodzaj_zajec (id_rodzaju),
+        REFERENCES rodzaj_zajec (id_rodzaju) ON DELETE CASCADE,
     CONSTRAINT fk_zajecia_sala     FOREIGN KEY (id_sali)
-        REFERENCES sala (id_sali),
+        REFERENCES sala (id_sali) ON DELETE CASCADE,
     CONSTRAINT fk_zajecia_trener   FOREIGN KEY (id_trenera)
-        REFERENCES trener (id_trenera),
+        REFERENCES trener (id_trenera) ON DELETE CASCADE,
 
     CONSTRAINT chk_zajecia_limit   CHECK (limit_miejsc > 0)
 );
@@ -482,9 +482,9 @@ CREATE TABLE zapisy_zajecia (
 
     CONSTRAINT pk_zapisy_zajecia  PRIMARY KEY (id_klienta, id_zajec),
     CONSTRAINT fk_zapisy_klient   FOREIGN KEY (id_klienta)
-        REFERENCES klient (id_klienta),
+        REFERENCES klient (id_klienta) ON DELETE CASCADE,
     CONSTRAINT fk_zapisy_zajecia  FOREIGN KEY (id_zajec)
-        REFERENCES zajecia_grupowe (id_zajec)
+        REFERENCES zajecia_grupowe (id_zajec) ON DELETE CASCADE
 );
 
 -- Plan_treningowy(id_planu, #id_klienta, #id_trenera, nazwa, cel,
@@ -501,9 +501,9 @@ CREATE TABLE plan_treningowy (
 
     CONSTRAINT pk_plan_treningowy  PRIMARY KEY (id_planu),
     CONSTRAINT fk_plan_klient      FOREIGN KEY (id_klienta)
-        REFERENCES klient (id_klienta),
+        REFERENCES klient (id_klienta) ON DELETE CASCADE,
     CONSTRAINT fk_plan_trener      FOREIGN KEY (id_trenera)
-        REFERENCES trener (id_trenera),
+        REFERENCES trener (id_trenera) ON DELETE CASCADE,
 
     CONSTRAINT chk_plan_przedz_cz  CHECK (obowiazuje_do >= obowiazuje_od)
 );
@@ -530,9 +530,9 @@ CREATE TABLE cwiczenia_w_planie (
 
     CONSTRAINT pk_cwiczenia_w_planie   PRIMARY KEY (id_planu, id_cwiczenia),
     CONSTRAINT fk_cwp_plan             FOREIGN KEY (id_planu)
-        REFERENCES plan_treningowy (id_planu),
+        REFERENCES plan_treningowy (id_planu) ON DELETE CASCADE,
     CONSTRAINT fk_cwp_cwiczenie        FOREIGN KEY (id_cwiczenia)
-        REFERENCES cwiczenie (id_cwiczenia),
+        REFERENCES cwiczenie (id_cwiczenia) ON DELETE CASCADE,
 
     CONSTRAINT chk_cwp_serie           CHECK (liczba_serii > 0),
     CONSTRAINT chk_cwp_powtorzenia     CHECK (ilosc_powtorzen >= 0)
@@ -545,9 +545,9 @@ CREATE TABLE wymagany_sprzet (
 
     CONSTRAINT pk_wymagany_sprzet  PRIMARY KEY (id_cwiczenia, id_kategorii),
     CONSTRAINT fk_ws_cwiczenie     FOREIGN KEY (id_cwiczenia)
-        REFERENCES cwiczenie (id_cwiczenia),
+        REFERENCES cwiczenie (id_cwiczenia) ON DELETE CASCADE,
     CONSTRAINT fk_ws_kategoria     FOREIGN KEY (id_kategorii)
-        REFERENCES kategoria_sprzetu (id_kategorii)
+        REFERENCES kategoria_sprzetu (id_kategorii) ON DELETE CASCADE
 );
 
 COMMIT;
