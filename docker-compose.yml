@@ -11,6 +11,32 @@ services:
     volumes:
       - ./sql:/docker-entrypoint-initdb.d:ro
       - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -h 127.0.0.1 -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 3s
+      timeout: 3s
+      retries: 20
+
+  python-runner:
+    image: python:3.12-slim
+    container_name: proj-db-python
+    depends_on:
+      db:
+        condition: service_healthy
+    working_dir: /app
+    environment:
+      PGHOST: db
+      PGPORT: 5432
+      PGDATABASE: ${POSTGRES_DB}
+      PGUSER: ${POSTGRES_USER}
+      PGPASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - ./python:/app:ro
+    command: >
+      sh -c "set -e;
+             pip install --no-cache-dir -r requirements.txt;
+             python /app/insert.py"
+    restart: "no"
 
 volumes:
   pgdata:
