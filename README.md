@@ -10,6 +10,13 @@
 ├── .env                     # Local env variables (in .gitignore)
 └── sql/                     # Start scripts (executed in lexicographical order)
     └── 01_schema.sql        # Table definitions
+└── python/                  # Python scripts (executed in lexicographical order)
+    └── requirements.txt     # Python packages, must contain psycopg[binary]
+    └── insert.py            # The only Python script that gets executed and inserts data into the database
+    └── database.py          # Establishing an SQLAlchemy session
+    └── models.py            # ORM Model definitions
+    └── *.py                 # User utils, data definitions, etc.
+
 ```
 
 # Deployment
@@ -30,9 +37,21 @@ docker compose up -d
 docker compose ps
 ```
 
-or check the initialization logs:
+Check the database initialization logs:
 ```bash
 docker compose logs -f db
+```
+
+Or check the logs from the Python runner:
+
+```bash
+docker compose logs -f python-runner
+```
+
+# (Re)inserting data
+
+```bash
+docker compose up --build python-runner
 ```
 
 # Entering the container (psql)
