@@ -525,3 +525,312 @@ class PlanExercise(Base):
             f"set_count={self.set_count!r}, "
             f"rep_count={self.rep_count!r})"
         )
+
+class MembershipType(Base):
+    __tablename__ = "membership_type"
+    __table_args__ = (
+        CheckConstraint("validity_period >= 1", name="chk_type_period"),
+        CheckConstraint("regular_price >= 0", name="chk_type_regular_price"),
+        CheckConstraint("reduced_price >= 0", name="chk_type_reduced_price"),
+        CheckConstraint("reduced_price <= regular_price", name="chk_type_prices"),
+    )
+
+    type_id:         Mapped[intpk]
+    name:            Mapped[str]           = mapped_column(String(50), unique=True)
+    validity_period: Mapped[int]
+    regular_price:   Mapped[Decimal]       = mapped_column(Numeric(10, 2))
+    reduced_price:   Mapped[Decimal]       = mapped_column(Numeric(10, 2))
+    description:     Mapped[Optional[str]] = mapped_column(Text)
+
+    memberships: Mapped[List["Membership"]] = relationship(
+        back_populates="type", passive_deletes=True)
+
+    def __repr__(self) -> str:
+        return (
+            f"MembershipType(type_id={self.type_id!r}, "
+            f"name={self.name!r}, "
+            f"validity_period={self.validity_period!r}, "
+            f"regular_price={self.regular_price!r}, "
+            f"reduced_price={self.reduced_price!r}, "
+            f"description={self.description!r})"
+        )
+
+
+class Membership(Base):
+    __tablename__ = "membership"
+    __table_args__ = (
+        CheckConstraint("price >= 0", name="chk_membership_price"),
+        CheckConstraint("start_date >= purchase_date::date", name="chk_membership_time_range"),
+    )
+
+    membership_id:   Mapped[intpk]
+    client_id:       Mapped[int]           = mapped_column(
+        ForeignKey("client.client_id", ondelete="CASCADE"))
+    type_id:         Mapped[int]           = mapped_column(
+        ForeignKey("membership_type.type_id", ondelete="RESTRICT"))
+    receptionist_id: Mapped[Optional[int]] = mapped_column(
+        ForeignKey("receptionist.receptionist_id", ondelete="SET NULL"))
+    purchase_date:   Mapped[datetime]      = mapped_column(server_default=func.current_timestamp())
+    start_date:      Mapped[date]          = mapped_column(server_default=func.current_date())
+    price:           Mapped[Decimal]       = mapped_column(Numeric(10, 2))
+
+    client: Mapped["Client"] = relationship(foreign_keys=[client_id])
+    type: Mapped["MembershipType"] = relationship(back_populates="memberships")
+    receptionist: Mapped[Optional["Receptionist"]] = relationship(foreign_keys=[receptionist_id])
+    payment_links: Mapped[List["MembershipPayment"]] = relationship(
+        back_populates="membership", passive_deletes=True)
+
+    def __repr__(self) -> str:
+        return (
+            f"Membership(membership_id={self.membership_id!r}, "
+            f"client_id={self.client_id!r}, "
+            f"type_id={self.type_id!r}, "
+            f"receptionist_id={self.receptionist_id!r}, "
+            f"purchase_date={self.purchase_date!r}, "
+            f"start_date={self.start_date!r}, "
+            f"price={self.price!r})"
+        )
+
+
+class Payment(Base):
+    __tablename__ = "payment"
+    __table_args__ = (
+        CheckConstraint("amount >= 0", name="chk_payment_amount"),
+        CheckConstraint("method IN ('gotowka', 'blik', 'karta')", name="chk_payment_method"),
+        CheckConstraint("status IN ('oczekujaca', 'oplacona', 'odrzucona')", name="chk_payment_status"),
+    )
+
+    payment_id:   Mapped[intpk]
+    amount:       Mapped[Decimal]  = mapped_column(Numeric(10, 2))
+    payment_date: Mapped[datetime] = mapped_column(server_default=func.current_timestamp())
+    method:       Mapped[str]      = mapped_column(String(15))
+    purpose:      Mapped[str]      = mapped_column(String(20))
+    status:       Mapped[str]      = mapped_column(String(15), server_default=text("'oczekujaca'"))
+
+    membership_links: Mapped[List["MembershipPayment"]] = relationship(
+        back_populates="payment", passive_deletes=True)
+    training_links: Mapped[List["TrainingPayment"]] = relationship(
+        back_populates="payment", passive_deletes=True)
+
+    def __repr__(self) -> str:
+        return (
+            f"Payment(payment_id={self.payment_id!r}, "
+            f"amount={self.amount!r}, "
+            f"payment_date={self.payment_date!r}, "
+            f"method={self.method!r}, "
+            f"purpose={self.purpose!r}, "
+            f"status={self.status!r})"
+        )
+
+
+class MembershipPayment(Base):
+    __tablename__ = "membership_payment"
+
+    payment_id:    Mapped[int] = mapped_column(
+        ForeignKey("payment.payment_id", ondelete="CASCADE"),
+        primary_key=True, autoincrement=False)
+    membership_id: Mapped[int] = mapped_column(
+        ForeignKey("membership.membership_id", ondelete="RESTRICT"),
+        primary_key=True, autoincrement=False)
+
+    payment: Mapped["Payment"] = relationship(back_populates="membership_links")
+    membership: Mapped["Membership"] = relationship(back_populates="payment_links")
+
+    def __repr__(self) -> str:
+        return (
+            f"MembershipPayment(payment_id={self.payment_id!r}, "
+            f"membership_id={self.membership_id!r})"
+        )
+
+
+class PersonalTraining(Base):
+    __tablename__ = "personal_training"
+    __table_args__ = (
+        CheckConstraint("price >= 0", name="chk_training_price"),
+        CheckConstraint("ends_at > starts_at", name="chk_training_time_range"),
+    )
+
+    training_id:  Mapped[intpk]
+    client_id:    Mapped[int]           = mapped_column(
+        ForeignKey("client.client_id", ondelete="CASCADE"))
+    trainer_id:   Mapped[int]           = mapped_column(
+        ForeignKey("trainer.trainer_id", ondelete="RESTRICT"))
+    starts_at:    Mapped[datetime]
+    ends_at:      Mapped[datetime]
+    price:        Mapped[Decimal]       = mapped_column(Numeric(10, 2))
+    is_cancelled: Mapped[bool]          = mapped_column(server_default=text("false"))
+    notes:        Mapped[Optional[str]] = mapped_column(Text)
+
+    client: Mapped["Client"] = relationship(foreign_keys=[client_id])
+    trainer: Mapped["Trainer"] = relationship(foreign_keys=[trainer_id])
+    payment_links: Mapped[List["TrainingPayment"]] = relationship(
+        back_populates="training", passive_deletes=True)
+    reservations: Mapped[List["StationReservation"]] = relationship(
+        back_populates="training", passive_deletes=True)
+
+    def __repr__(self) -> str:
+        return (
+            f"PersonalTraining(training_id={self.training_id!r}, "
+            f"client_id={self.client_id!r}, "
+            f"trainer_id={self.trainer_id!r}, "
+            f"starts_at={self.starts_at!r}, "
+            f"ends_at={self.ends_at!r}, "
+            f"price={self.price!r}, "
+            f"is_cancelled={self.is_cancelled!r})"
+        )
+
+
+class TrainingPayment(Base):
+    __tablename__ = "training_payment"
+
+    payment_id:  Mapped[int] = mapped_column(
+        ForeignKey("payment.payment_id", ondelete="CASCADE"),
+        primary_key=True, autoincrement=False)
+    training_id: Mapped[int] = mapped_column(
+        ForeignKey("personal_training.training_id", ondelete="RESTRICT"),
+        primary_key=True, autoincrement=False)
+
+    payment: Mapped["Payment"] = relationship(back_populates="training_links")
+    training: Mapped["PersonalTraining"] = relationship(back_populates="payment_links")
+
+    def __repr__(self) -> str:
+        return (
+            f"TrainingPayment(payment_id={self.payment_id!r}, "
+            f"training_id={self.training_id!r})"
+        )
+
+
+class StationReservation(Base):
+    __tablename__ = "station_reservation"
+    __table_args__ = (
+        CheckConstraint("reserved_to > reserved_from", name="chk_reservation_time_range"),
+    )
+
+    reservation_id: Mapped[intpk]
+    station_id:     Mapped[int]      = mapped_column(
+        ForeignKey("station.station_id", ondelete="CASCADE"))
+    training_id:    Mapped[int]      = mapped_column(
+        ForeignKey("personal_training.training_id", ondelete="CASCADE"))
+    reserved_from:  Mapped[datetime]
+    reserved_to:    Mapped[datetime]
+    created_at:     Mapped[datetime] = mapped_column(server_default=func.current_timestamp())
+    is_active:      Mapped[bool]     = mapped_column(server_default=text("true"))
+
+    station: Mapped["Station"] = relationship(foreign_keys=[station_id])
+    training: Mapped["PersonalTraining"] = relationship(back_populates="reservations")
+
+    def __repr__(self) -> str:
+        return (
+            f"StationReservation(reservation_id={self.reservation_id!r}, "
+            f"station_id={self.station_id!r}, "
+            f"training_id={self.training_id!r}, "
+            f"reserved_from={self.reserved_from!r}, "
+            f"reserved_to={self.reserved_to!r}, "
+            f"created_at={self.created_at!r}, "
+            f"is_active={self.is_active!r})"
+        )
+
+
+class ClassType(Base):
+    __tablename__ = "class_type"
+    __table_args__ = (
+        CheckConstraint("skill_level IN ('poczatkujacy', 'sredniozaawansowany', 'zaawansowany')", name="chk_class_type_level"),
+        CheckConstraint("duration_minutes > 0", name="chk_class_type_duration"),
+    )
+
+    class_type_id:    Mapped[intpk]
+    name:             Mapped[str]           = mapped_column(String(100), unique=True)
+    description:      Mapped[Optional[str]] = mapped_column(Text)
+    skill_level:      Mapped[str]           = mapped_column(String(20))
+    duration_minutes: Mapped[int]
+
+    qualification_links: Mapped[List["TrainerQualification"]] = relationship(
+        back_populates="class_type", passive_deletes=True)
+    group_classes: Mapped[List["GroupClass"]] = relationship(
+        back_populates="class_type", passive_deletes=True)
+
+    def __repr__(self) -> str:
+        return (
+            f"ClassType(class_type_id={self.class_type_id!r}, "
+            f"name={self.name!r}, "
+            f"description={self.description!r}, "
+            f"skill_level={self.skill_level!r}, "
+            f"duration_minutes={self.duration_minutes!r})"
+        )
+
+
+class TrainerQualification(Base):
+    __tablename__ = "trainer_qualification"
+
+    trainer_id:    Mapped[int] = mapped_column(
+        ForeignKey("trainer.trainer_id", ondelete="CASCADE"),
+        primary_key=True, autoincrement=False)
+    class_type_id: Mapped[int] = mapped_column(
+        ForeignKey("class_type.class_type_id", ondelete="CASCADE"),
+        primary_key=True, autoincrement=False)
+
+    trainer: Mapped["Trainer"] = relationship(foreign_keys=[trainer_id])
+    class_type: Mapped["ClassType"] = relationship(back_populates="qualification_links")
+
+    def __repr__(self) -> str:
+        return (
+            f"TrainerQualification(trainer_id={self.trainer_id!r}, "
+            f"class_type_id={self.class_type_id!r})"
+        )
+
+
+class GroupClass(Base):
+    __tablename__ = "group_class"
+    __table_args__ = (
+        CheckConstraint("capacity > 0", name="chk_group_class_capacity"),
+    )
+
+    class_id:      Mapped[intpk]
+    class_type_id: Mapped[int]  = mapped_column(
+        ForeignKey("class_type.class_type_id", ondelete="CASCADE"))
+    room_id:       Mapped[int]  = mapped_column(
+        ForeignKey("room.room_id", ondelete="CASCADE"))
+    trainer_id:    Mapped[int]  = mapped_column(
+        ForeignKey("trainer.trainer_id", ondelete="RESTRICT"))
+    starts_at:     Mapped[datetime]
+    capacity:      Mapped[int]
+    is_cancelled:  Mapped[bool] = mapped_column(server_default=text("false"))
+
+    class_type: Mapped["ClassType"] = relationship(back_populates="group_classes")
+    room: Mapped["Room"] = relationship(foreign_keys=[room_id])
+    trainer: Mapped["Trainer"] = relationship(foreign_keys=[trainer_id])
+    enrollment_links: Mapped[List["ClassEnrollment"]] = relationship(
+        back_populates="group_class", passive_deletes=True)
+
+    def __repr__(self) -> str:
+        return (
+            f"GroupClass(class_id={self.class_id!r}, "
+            f"class_type_id={self.class_type_id!r}, "
+            f"room_id={self.room_id!r}, "
+            f"trainer_id={self.trainer_id!r}, "
+            f"starts_at={self.starts_at!r}, "
+            f"capacity={self.capacity!r}, "
+            f"is_cancelled={self.is_cancelled!r})"
+        )
+
+
+class ClassEnrollment(Base):
+    __tablename__ = "class_enrollment"
+
+    client_id:   Mapped[int]      = mapped_column(
+        ForeignKey("client.client_id", ondelete="CASCADE"),
+        primary_key=True, autoincrement=False)
+    class_id:    Mapped[int]      = mapped_column(
+        ForeignKey("group_class.class_id", ondelete="CASCADE"),
+        primary_key=True, autoincrement=False)
+    enrolled_at: Mapped[datetime] = mapped_column(server_default=func.current_timestamp())
+
+    client: Mapped["Client"] = relationship(foreign_keys=[client_id])
+    group_class: Mapped["GroupClass"] = relationship(back_populates="enrollment_links")
+
+    def __repr__(self) -> str:
+        return (
+            f"ClassEnrollment(client_id={self.client_id!r}, "
+            f"class_id={self.class_id!r}, "
+            f"enrolled_at={self.enrolled_at!r})"
+        )
