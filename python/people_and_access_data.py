@@ -24,8 +24,6 @@ from models import (
 
 __all__ = ["generate_people_and_access_data", "SEQUENCE_RESET_SQL"]
 
-_SEED = 44
-
 _DEFAULT_REFERENCE_TIME = datetime(2026, 10, 28, 23, 0, 0)
 
 _ACCOUNTS_START = datetime(2024, 1, 1)
@@ -152,11 +150,11 @@ def _validate_arguments(n_accounts, n_failed_logins, n_entries,
 
 
 class _Generator:
-    def __init__(self, seed: int, reference_time: datetime, n_accounts: int):
+    def __init__(self, reference_time: datetime, n_accounts: int):
         self.now = reference_time.replace(microsecond=0)
-        self.rng = Random(seed)
+        self.rng = Random()
         self.fake = Faker("pl_PL")
-        self.fake.seed_instance(seed)
+        self.fake.seed_instance()
 
         pool_size = max(_MIN_SUFFIX_POOL, n_accounts)
         self.login_suffixes = self.rng.sample(range(pool_size), n_accounts)
@@ -418,10 +416,9 @@ def generate_people_and_access_data(
         n_entries: int,
         user_account_fractions: dict[str, float],
         *,
-        seed: int = _SEED,
         reference_time: datetime = _DEFAULT_REFERENCE_TIME):
     _validate_arguments(n_accounts, n_failed_logins, n_entries,
                         user_account_fractions, reference_time)
 
-    return _Generator(seed, reference_time, n_accounts).generate(
+    return _Generator(reference_time, n_accounts).generate(
         n_accounts, n_failed_logins, n_entries, user_account_fractions)

@@ -22,8 +22,6 @@ from models import (
 
 __all__ = ["generate_sales_and_sessions_data", "SALES_SEQUENCE_RESET_SQL"]
 
-_SEED = 45
-
 _DEFAULT_REFERENCE_TIME = datetime(2026, 10, 28, 23, 0, 0)
 
 _DATA_START = datetime(2024, 1, 1)
@@ -191,10 +189,10 @@ def _validate_arguments(clients, trainers, receptionists, rooms, stations,
 
 
 class _Generator:
-    def __init__(self, seed: int, reference_time: datetime, clients, trainers,
+    def __init__(self, reference_time: datetime, clients, trainers,
                  receptionists, rooms, stations):
         self.now = reference_time.replace(microsecond=0)
-        self.rng = Random(seed)
+        self.rng = Random()
 
         self.clients = clients
         self.trainers = trainers
@@ -655,12 +653,11 @@ def generate_sales_and_sessions_data(
         n_group_classes: int,
         n_enrollments: int,
         *,
-        seed: int = _SEED,
         reference_time: datetime = _DEFAULT_REFERENCE_TIME):
     _validate_arguments(clients, trainers, receptionists, rooms, stations,
                         n_memberships, n_personal_trainings, n_group_classes,
                         n_enrollments, reference_time)
 
-    return _Generator(seed, reference_time, clients, trainers, receptionists,
+    return _Generator(reference_time, clients, trainers, receptionists,
                       rooms, stations).generate(
         n_memberships, n_personal_trainings, n_group_classes, n_enrollments)
