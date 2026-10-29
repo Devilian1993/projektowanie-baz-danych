@@ -1,4 +1,5 @@
 from people_and_access_data import *
+from facility_and_training_data import *
 from models import *
 
 with SessionLocal() as session:
@@ -22,15 +23,26 @@ with SessionLocal() as session:
         }
     )
 
-    session.add_all([row for rows in result.values() for row in rows])
+    result_facility = generate_facility_and_training_data(
+        accounts=result["user_account"],
+        clients=result["client"],
+        trainers=result["trainer"],
+        technicians=result["technician"]
+    )
+
+    all_rows = [row for rows in result.values() for row in rows] + \
+               [row for rows in result_facility.values() for row in rows]
+
+    session.add_all(all_rows)
     session.flush()
 
-    for statement in SEQUENCE_RESET_SQL:
+    for statement in SEQUENCE_RESET_SQL + FACILITY_SEQUENCE_RESET_SQL:
         session.execute(text(statement))
 
     session.commit()
 
     print("Rows now in the database:")
-    for table in result:
+    all_table_names = list(result.keys()) + list(result_facility.keys())
+    for table in all_table_names:
         count = session.execute(text(f'SELECT COUNT(*) FROM "{table}"')).scalar()
         print(f"  {table}: {count}")

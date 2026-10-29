@@ -1,6 +1,6 @@
 from decimal import Decimal
 from typing import Annotated, List, Optional
-from datetime import date, datetime
+from datetime import date, datetime, time
 
 from sqlalchemy import (CheckConstraint, ForeignKey, Identity, Numeric, String, Text, func, text)
 from sqlalchemy.orm import Mapped, mapped_column, relationship
@@ -241,4 +241,287 @@ class TrainerSpecialization(Base):
             f"TrainerSpecialization("
             f"trainer_id={self.trainer_id!r}, "
             f"specialization_id={self.specialization_id!r})"
+        )
+
+
+
+class Room(Base):
+    __tablename__ = "room"
+    __table_args__ = (
+        CheckConstraint("number >= 0", name="chk_room_number"),
+        CheckConstraint("area > 0", name="chk_room_area"),
+        CheckConstraint("max_occupancy > 0", name="chk_room_max_occupancy"),
+        CheckConstraint("closing_time > opening_time", name="chk_room_time_range"),
+    )
+
+    room_id:       Mapped[intpk]
+    number:        Mapped[int]             = mapped_column(unique=True)
+    name:          Mapped[str]             = mapped_column(String(100), unique=True)
+    area:          Mapped[Optional[Decimal]] = mapped_column(Numeric(7, 2))
+    max_occupancy: Mapped[int]
+    opening_time:  Mapped[time]   = mapped_column(server_default=text("'00:00'"))
+    closing_time:  Mapped[time]   = mapped_column(server_default=text("'23:59:59'"))
+    is_active:     Mapped[bool]            = mapped_column(server_default=text("true"))
+
+    stations: Mapped[List["Station"]] = relationship(
+        back_populates="room", passive_deletes=True)
+
+    def __repr__(self) -> str:
+        return (
+            f"Room(room_id={self.room_id!r}, "
+            f"number={self.number!r}, "
+            f"name={self.name!r}, "
+            f"area={self.area!r}, "
+            f"max_occupancy={self.max_occupancy!r}, "
+            f"opening_time={self.opening_time!r}, "
+            f"closing_time={self.closing_time!r}, "
+            f"is_active={self.is_active!r})"
+        )
+
+
+class EquipmentCategory(Base):
+    __tablename__ = "equipment_category"
+
+    category_id: Mapped[intpk]
+    name:        Mapped[str]           = mapped_column(String(100), unique=True)
+    description: Mapped[Optional[str]] = mapped_column(Text)
+
+    machine_models: Mapped[List["MachineModel"]] = relationship(
+        back_populates="category", passive_deletes=True)
+    required_equipment_links: Mapped[List["RequiredEquipment"]] = relationship(
+        back_populates="category", passive_deletes=True)
+
+    def __repr__(self) -> str:
+        return (
+            f"EquipmentCategory(category_id={self.category_id!r}, "
+            f"name={self.name!r}, "
+            f"description={self.description!r})"
+        )
+
+
+class Station(Base):
+    __tablename__ = "station"
+
+    station_id:   Mapped[intpk]
+    room_id:      Mapped[int]           = mapped_column(
+        ForeignKey("room.room_id", ondelete="CASCADE"))
+    name:         Mapped[str]           = mapped_column(String(100))
+    description:  Mapped[Optional[str]] = mapped_column(Text)
+    is_available: Mapped[bool]          = mapped_column(server_default=text("true"))
+
+    room: Mapped["Room"] = relationship(back_populates="stations")
+    machines: Mapped[List["Machine"]] = relationship(
+        back_populates="station", passive_deletes=True)
+
+    def __repr__(self) -> str:
+        return (
+            f"Station(station_id={self.station_id!r}, "
+            f"room_id={self.room_id!r}, "
+            f"name={self.name!r}, "
+            f"description={self.description!r}, "
+            f"is_available={self.is_available!r})"
+        )
+
+
+class MachineModel(Base):
+    __tablename__ = "machine_model"
+
+    model_id:     Mapped[intpk]
+    category_id:  Mapped[int]           = mapped_column(
+        ForeignKey("equipment_category.category_id", ondelete="RESTRICT"))
+    manufacturer: Mapped[str]           = mapped_column(String(100))
+    model:        Mapped[str]           = mapped_column(String(100))
+    name:         Mapped[Optional[str]] = mapped_column(String(150))
+
+    category: Mapped["EquipmentCategory"] = relationship(back_populates="machine_models")
+    machines: Mapped[List["Machine"]] = relationship(
+        back_populates="model", passive_deletes=True)
+
+    def __repr__(self) -> str:
+        return (
+            f"MachineModel(model_id={self.model_id!r}, "
+            f"category_id={self.category_id!r}, "
+            f"manufacturer={self.manufacturer!r}, "
+            f"model={self.model!r}, "
+            f"name={self.name!r})"
+        )
+
+
+class Machine(Base):
+    __tablename__ = "machine"
+    __table_args__ = (
+        CheckConstraint("tech_condition IN ('sprawna', 'uszkodzona', 'w_konserwacji')", name="chk_machine_condition"),
+        CheckConstraint("maintenance_date >= purchase_date", name="chk_machine_time_range"),
+    )
+
+    machine_id:       Mapped[intpk]
+    station_id:       Mapped[Optional[int]] = mapped_column(
+        ForeignKey("station.station_id", ondelete="SET NULL"))
+    model_id:         Mapped[int]           = mapped_column(
+        ForeignKey("machine_model.model_id", ondelete="RESTRICT"))
+    serial_number:    Mapped[str]           = mapped_column(String(50))
+    purchase_date:    Mapped[date]
+    tech_condition:   Mapped[str]           = mapped_column(String(20), server_default=text("'sprawna'"))
+    maintenance_date: Mapped[Optional[date]]
+
+    station: Mapped[Optional["Station"]] = relationship(back_populates="machines")
+    model: Mapped["MachineModel"] = relationship(back_populates="machines")
+    service_requests: Mapped[List["ServiceRequest"]] = relationship(
+        back_populates="machine", passive_deletes=True)
+
+    def __repr__(self) -> str:
+        return (
+            f"Machine(machine_id={self.machine_id!r}, "
+            f"station_id={self.station_id!r}, "
+            f"model_id={self.model_id!r}, "
+            f"serial_number={self.serial_number!r}, "
+            f"purchase_date={self.purchase_date!r}, "
+            f"tech_condition={self.tech_condition!r}, "
+            f"maintenance_date={self.maintenance_date!r})"
+        )
+
+
+class ServiceRequest(Base):
+    __tablename__ = "service_request"
+    __table_args__ = (
+        CheckConstraint("request_type IN ('rutynowa_konserwacja', 'uszkodzona_czesc', 'brakujaca_czesc', 'zuzyta_czesc')", name="chk_request_type"),
+        CheckConstraint("start_date >= reported_at", name="chk_request_start"),
+        CheckConstraint("end_date > start_date", name="chk_request_end"),
+        CheckConstraint("end_date IS NULL OR start_date IS NOT NULL", name="chk_request_valid_time"),
+    )
+
+    request_id:          Mapped[intpk]
+    machine_id:          Mapped[int]               = mapped_column(
+        ForeignKey("machine.machine_id", ondelete="CASCADE"))
+    reporter_account_id: Mapped[Optional[int]]     = mapped_column(
+        ForeignKey("user_account.account_id", ondelete="SET NULL"))
+    technician_id:       Mapped[Optional[int]]     = mapped_column(
+        ForeignKey("technician.technician_id", ondelete="SET NULL"))
+    request_type:        Mapped[str]               = mapped_column(String(25))
+    reported_at:         Mapped[datetime]          = mapped_column(server_default=func.current_timestamp())
+    description:         Mapped[str]               = mapped_column(Text)
+    start_date:          Mapped[Optional[datetime]]
+    end_date:            Mapped[Optional[datetime]]
+
+    machine: Mapped["Machine"] = relationship(back_populates="service_requests")
+    reporter_account: Mapped[Optional["UserAccount"]] = relationship(foreign_keys=[reporter_account_id])
+    technician: Mapped[Optional["Technician"]] = relationship(foreign_keys=[technician_id])
+
+    def __repr__(self) -> str:
+        return (
+            f"ServiceRequest(request_id={self.request_id!r}, "
+            f"machine_id={self.machine_id!r}, "
+            f"reporter_account_id={self.reporter_account_id!r}, "
+            f"technician_id={self.technician_id!r}, "
+            f"request_type={self.request_type!r}, "
+            f"reported_at={self.reported_at!r}, "
+            f"start_date={self.start_date!r}, "
+            f"end_date={self.end_date!r})"
+        )
+
+
+class Exercise(Base):
+    __tablename__ = "exercise"
+    __table_args__ = (
+        CheckConstraint("difficulty_level IN ('poczatkujacy', 'sredniozaawansowany', 'zaawansowany')", name="chk_exercise_level"),
+    )
+
+    exercise_id:      Mapped[intpk]
+    name:             Mapped[str]           = mapped_column(String(100), unique=True)
+    description:      Mapped[Optional[str]] = mapped_column(Text)
+    difficulty_level: Mapped[str]           = mapped_column(String(20))
+
+    required_equipment_links: Mapped[List["RequiredEquipment"]] = relationship(
+        back_populates="exercise", passive_deletes=True)
+    plan_exercise_links: Mapped[List["PlanExercise"]] = relationship(
+        back_populates="exercise", passive_deletes=True)
+
+    def __repr__(self) -> str:
+        return (
+            f"Exercise(exercise_id={self.exercise_id!r}, "
+            f"name={self.name!r}, "
+            f"description={self.description!r}, "
+            f"difficulty_level={self.difficulty_level!r})"
+        )
+
+
+class RequiredEquipment(Base):
+    __tablename__ = "required_equipment"
+
+    exercise_id: Mapped[int] = mapped_column(
+        ForeignKey("exercise.exercise_id", ondelete="CASCADE"),
+        primary_key=True, autoincrement=False)
+    category_id: Mapped[int] = mapped_column(
+        ForeignKey("equipment_category.category_id", ondelete="CASCADE"),
+        primary_key=True, autoincrement=False)
+
+    exercise: Mapped["Exercise"] = relationship(back_populates="required_equipment_links")
+    category: Mapped["EquipmentCategory"] = relationship(back_populates="required_equipment_links")
+
+    def __repr__(self) -> str:
+        return (
+            f"RequiredEquipment(exercise_id={self.exercise_id!r}, "
+            f"category_id={self.category_id!r})"
+        )
+
+
+class TrainingPlan(Base):
+    __tablename__ = "training_plan"
+    __table_args__ = (
+        CheckConstraint("valid_to >= valid_from", name="chk_plan_time_range"),
+    )
+
+    plan_id:         Mapped[intpk]
+    client_id:       Mapped[int]           = mapped_column(
+        ForeignKey("client.client_id", ondelete="CASCADE"))
+    trainer_id:      Mapped[int]           = mapped_column(
+        ForeignKey("trainer.trainer_id", ondelete="CASCADE"))
+    name:            Mapped[str]           = mapped_column(String(100))
+    goal:            Mapped[Optional[str]] = mapped_column(String(255))
+    valid_from:      Mapped[date]
+    valid_to:        Mapped[date]
+    recommendations: Mapped[Optional[str]] = mapped_column(Text)
+
+    client: Mapped["Client"] = relationship(foreign_keys=[client_id])
+    trainer: Mapped["Trainer"] = relationship(foreign_keys=[trainer_id])
+    plan_exercise_links: Mapped[List["PlanExercise"]] = relationship(
+        back_populates="plan", passive_deletes=True)
+
+    def __repr__(self) -> str:
+        return (
+            f"TrainingPlan(plan_id={self.plan_id!r}, "
+            f"client_id={self.client_id!r}, "
+            f"trainer_id={self.trainer_id!r}, "
+            f"name={self.name!r}, "
+            f"goal={self.goal!r}, "
+            f"valid_from={self.valid_from!r}, "
+            f"valid_to={self.valid_to!r})"
+        )
+
+
+class PlanExercise(Base):
+    __tablename__ = "plan_exercise"
+    __table_args__ = (
+        CheckConstraint("set_count > 0", name="chk_pe_sets"),
+        CheckConstraint("rep_count >= 0", name="chk_pe_reps"),
+    )
+
+    plan_id:     Mapped[int] = mapped_column(
+        ForeignKey("training_plan.plan_id", ondelete="CASCADE"),
+        primary_key=True, autoincrement=False)
+    exercise_id: Mapped[int] = mapped_column(
+        ForeignKey("exercise.exercise_id", ondelete="CASCADE"),
+        primary_key=True, autoincrement=False)
+    set_count:   Mapped[int]
+    rep_count:   Mapped[int]
+
+    plan: Mapped["TrainingPlan"] = relationship(back_populates="plan_exercise_links")
+    exercise: Mapped["Exercise"] = relationship(back_populates="plan_exercise_links")
+
+    def __repr__(self) -> str:
+        return (
+            f"PlanExercise(plan_id={self.plan_id!r}, "
+            f"exercise_id={self.exercise_id!r}, "
+            f"set_count={self.set_count!r}, "
+            f"rep_count={self.rep_count!r})"
         )
