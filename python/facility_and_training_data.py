@@ -26,8 +26,6 @@ from models import (
 
 __all__ = ["generate_facility_and_training_data", "FACILITY_SEQUENCE_RESET_SQL"]
 
-_SEED = 45
-
 _DEFAULT_REFERENCE_TIME = datetime(2026, 10, 28, 23, 0, 0)
 _GYM_OPENING_DATE = date(2024, 1, 1)
 
@@ -138,16 +136,16 @@ FACILITY_SEQUENCE_RESET_SQL = [
 
 #generator
 class _FacilityGenerator:
-    def __init__(self, seed: int, reference_time: datetime, 
+    def __init__(self, reference_time: datetime,
                  accounts: list[UserAccount], clients: list[Client], 
                  trainers: list[Trainer], technicians: list[Technician],
                  training_plan_fraction: float,
                  n_historical_service_requests: int,
                  warehouse_machines_count: int):
         self.now = reference_time.replace(microsecond=0)
-        self.rng = Random(seed)
+        self.rng = Random()
         self.fake = Faker("pl_PL")
-        self.fake.seed_instance(seed)
+        self.fake.seed_instance()
 
         self.training_plan_fraction = training_plan_fraction
         self.n_historical_service_requests = n_historical_service_requests
@@ -506,11 +504,9 @@ def generate_facility_and_training_data(
         training_plan_fraction: float = 0.20,
         n_historical_service_requests: int = 300,
         warehouse_machines_count: int = 15,
-        seed: int = _SEED,
         reference_time: datetime = _DEFAULT_REFERENCE_TIME):
     
     generator = _FacilityGenerator(
-        seed=seed,
         reference_time=reference_time,
         accounts=accounts,
         clients=clients,
