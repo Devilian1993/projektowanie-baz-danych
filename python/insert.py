@@ -4,7 +4,6 @@ from sales_and_sessions_data import *
 from models import *
 
 with SessionLocal() as session:
-    # clear the database, be careful or sth
     names = inspect(session.connection()).get_table_names()
     tables = ", ".join(f'"{name}"' for name in names)
     session.execute(text(f"TRUNCATE TABLE {tables} RESTART IDENTITY"))

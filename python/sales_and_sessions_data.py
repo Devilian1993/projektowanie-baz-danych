@@ -22,8 +22,6 @@ from models import (
 
 __all__ = ["generate_sales_and_sessions_data", "SALES_SEQUENCE_RESET_SQL"]
 
-_DEFAULT_REFERENCE_TIME = datetime(2026, 10, 28, 23, 0, 0)
-
 _DATA_START = datetime(2024, 1, 1)
 _MIN_DATA_AGE = timedelta(days=1)
 
@@ -653,7 +651,10 @@ def generate_sales_and_sessions_data(
         n_group_classes: int,
         n_enrollments: int,
         *,
-        reference_time: datetime = _DEFAULT_REFERENCE_TIME):
+        reference_time: datetime | None = None):
+    if reference_time is None:
+        reference_time = datetime.now()
+
     _validate_arguments(clients, trainers, receptionists, rooms, stations,
                         n_memberships, n_personal_trainings, n_group_classes,
                         n_enrollments, reference_time)

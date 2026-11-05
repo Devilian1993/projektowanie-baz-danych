@@ -26,9 +26,7 @@ from models import (
 
 __all__ = ["generate_facility_and_training_data", "FACILITY_SEQUENCE_RESET_SQL"]
 
-_DEFAULT_REFERENCE_TIME = datetime(2026, 10, 28, 23, 0, 0)
 _GYM_OPENING_DATE = date(2024, 1, 1)
-
 
 _ROOMS = [
     #number, name, area, max_occupancy, opening_time, closing_time
@@ -137,7 +135,7 @@ FACILITY_SEQUENCE_RESET_SQL = [
 #generator
 class _FacilityGenerator:
     def __init__(self, reference_time: datetime,
-                 accounts: list[UserAccount], clients: list[Client], 
+                 accounts: list[UserAccount], clients: list[Client],
                  trainers: list[Trainer], technicians: list[Technician],
                  training_plan_fraction: float,
                  n_historical_service_requests: int,
@@ -186,7 +184,7 @@ class _FacilityGenerator:
 
     def _bool(self, probability: float = 0.5) -> bool:
         return self.rng.random() < probability
-        
+
     def _date_between(self, start: date, end: date) -> date:
         days = (end - start).days
         return start + timedelta(days=self.rng.randint(0, days))
@@ -218,10 +216,10 @@ class _FacilityGenerator:
 
     def _make_stations(self):
         rooms = self.tables["room"]
-        
+
         for room in rooms:
             num_stations = self.rng.randint(5, max(5, room.max_occupancy - 2))
-            
+
             for i in range(1, num_stations + 1):
                 self.tables["station"].append(
                     Station(
@@ -232,7 +230,7 @@ class _FacilityGenerator:
                         is_available=True
                     )
                 )
-    
+
     def _datetime_between(self, start: datetime, end: datetime) -> datetime:
         seconds = int((end - start).total_seconds())
         return start + timedelta(seconds=self.rng.randint(0, seconds))
@@ -240,18 +238,18 @@ class _FacilityGenerator:
     def _make_machine_models(self):
         manufacturers = ["TechnoGym", "LifeFitness", "Matrix", "Precor", "Hammer Strength", "Rogue"]
         created_pairs = set()
-        
+
         for category in self.tables["equipment_category"]:
             num_models = self.rng.randint(2, 8)
             for _ in range(num_models):
                 while True:
                     manufacturer = self.rng.choice(manufacturers)
                     model_code = f"{self.rng.choice(['Pro', 'Elite', 'Max', 'Ultra', 'Series'])} {self.rng.randint(1, 9)}00"
-                    
+
                     if (manufacturer, model_code) not in created_pairs:
                         created_pairs.add((manufacturer, model_code))
                         break
-                
+
                 self.tables["machine_model"].append(
                     MachineModel(
                         model_id=self._next_id("machine_model"),
@@ -324,7 +322,7 @@ class _FacilityGenerator:
             machine = self.rng.choice(self.tables["machine"])
             model = models_dict.get(machine.model_id)
             model_name = model.name if model else "Sprzęt ogólny"
-            
+
             reporter = self.rng.choice(self.accounts) if self._bool(0.7) else None
             technician = self.rng.choice(self.technicians)
 
@@ -336,7 +334,7 @@ class _FacilityGenerator:
             min_report_time = datetime.combine(machine.purchase_date, time(8, 0))
             max_report_time = max(min_report_time, self.now - timedelta(days=7))
             reported_at = self._datetime_between(min_report_time, max_report_time)
-            
+
             start_date = reported_at + timedelta(hours=self.rng.randint(1, 72))
             end_date = start_date + timedelta(hours=self.rng.randint(1, 48))
 
@@ -400,10 +398,10 @@ class _FacilityGenerator:
 
     def _make_required_equipment(self):
         category_map = {cat.name: cat for cat in self.tables["equipment_category"]}
-        
+
         for exercise_data, exercise_obj in zip(_EXERCISES, self.tables["exercise"]):
             required_category_names = exercise_data[3]
-            
+
             for cat_name in required_category_names:
                 if cat_name in category_map:
                     target_category = category_map[cat_name]
@@ -416,9 +414,9 @@ class _FacilityGenerator:
 
     def _make_training_plans(self):
         goals = [
-            "Budowa masy mięśniowej", 
-            "Redukcja tkanki tłuszczowej", 
-            "Poprawa kondycji i wydolności", 
+            "Budowa masy mięśniowej",
+            "Redukcja tkanki tłuszczowej",
+            "Poprawa kondycji i wydolności",
             "Powrót do formy po kontuzji",
             "Zwiększenie siły maksymalnej"
         ]
@@ -430,23 +428,23 @@ class _FacilityGenerator:
             "Zadbaj o 8 godzin snu każdej nocy oraz zbilansowaną dietę bogatą w pełnowartościowe białko.",
             "Przed każdym treningiem wykonaj 10-minutową rozgrzewkę ogólnorozwojową i mobilizację stawów."
         ]
-        
+
         num_clients_with_plan = int(len(self.clients) * self.training_plan_fraction)
         selected_clients = self.rng.sample(self.clients, num_clients_with_plan)
-        
+
         for client in selected_clients:
             num_plans = self.rng.randint(1, 3)
             trainer = self.rng.choice(self.trainers)
-            
+
             max_start = max(client.registered_at.date(), self.now.date() - timedelta(days=60))
             current_start_date = self._date_between(client.registered_at.date(), max_start)
-            
+
             for _ in range(num_plans):
                 duration_weeks = self.rng.randint(4, 12)
                 valid_to = current_start_date + timedelta(weeks=duration_weeks)
-                
+
                 goal = self.rng.choice(goals)
-                
+
                 self.tables["training_plan"].append(
                     TrainingPlan(
                         plan_id=self._next_id("training_plan"),
@@ -459,18 +457,18 @@ class _FacilityGenerator:
                         recommendations=self.rng.choice(trainer_recommendations)
                     )
                 )
-                
+
                 current_start_date = valid_to + timedelta(days=self.rng.randint(1, 14))
                 if current_start_date > self.now.date() + timedelta(days=180):
                     break
 
     def _make_plan_exercises(self):
         exercises = self.tables["exercise"]
-        
+
         for plan in self.tables["training_plan"]:
             num_exercises = self.rng.randint(4, min(8, len(exercises)))
             chosen_exercises = self.rng.sample(exercises, num_exercises)
-            
+
             for exercise in chosen_exercises:
                 self.tables["plan_exercise"].append(
                     PlanExercise(
@@ -504,8 +502,10 @@ def generate_facility_and_training_data(
         training_plan_fraction: float = 0.20,
         n_historical_service_requests: int = 300,
         warehouse_machines_count: int = 15,
-        reference_time: datetime = _DEFAULT_REFERENCE_TIME):
-    
+        reference_time: datetime | None = None):
+    if reference_time is None:
+        reference_time = datetime.now()
+
     generator = _FacilityGenerator(
         reference_time=reference_time,
         accounts=accounts,
