@@ -1,4 +1,4 @@
-SELECT
+SELECT DISTINCT
     e.name AS exercise_name, e.description
 FROM exercise e
     LEFT JOIN required_equipment re ON e.exercise_id = re.exercise_id
