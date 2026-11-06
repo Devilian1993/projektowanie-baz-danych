@@ -24,8 +24,6 @@ from models import (
 
 __all__ = ["generate_people_and_access_data", "SEQUENCE_RESET_SQL"]
 
-_DEFAULT_REFERENCE_TIME = datetime(2026, 10, 28, 23, 0, 0)
-
 _ACCOUNTS_START = datetime(2024, 1, 1)
 _MIN_ACCOUNT_AGE = timedelta(days=1)
 
@@ -40,8 +38,8 @@ _STUDENT_PROBABILITY = 0.1
 _PHONE_MISSING_PROBABILITY = 0.1
 
 _ACTIVE_GRANT_PROBABILITY = 0.95
-_STILL_INSIDE_PROBABILITY = 0.3
-_RECENT_ENTRY_PROBABILITY = 0.03
+_STILL_INSIDE_PROBABILITY = 0.2
+_RECENT_ENTRY_PROBABILITY = 0.07
 _RECENT_WINDOW_SECONDS = 24 * 60 * 60
 _MIN_VISIT_SECONDS = 60
 _MAX_VISIT_SECONDS = 8 * 60 * 60
@@ -416,7 +414,10 @@ def generate_people_and_access_data(
         n_entries: int,
         user_account_fractions: dict[str, float],
         *,
-        reference_time: datetime = _DEFAULT_REFERENCE_TIME):
+        reference_time: datetime | None = None):
+    if reference_time is None:
+        reference_time = datetime.now()
+
     _validate_arguments(n_accounts, n_failed_logins, n_entries,
                         user_account_fractions, reference_time)
 
