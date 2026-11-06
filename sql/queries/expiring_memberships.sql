@@ -1,10 +1,8 @@
-WITH params AS (
-    SELECT CAST(${Number of days ahead} AS INTEGER) AS days_ahead
-),
-membership_period AS (
+WITH membership_period AS (
     SELECT m.*,
            mt.name                               AS type_name,
-           m.start_date + mt.validity_period - 1 AS end_date
+           m.start_date + mt.validity_period - 1 AS end_date,
+           CAST(${Number of days ahead} AS INTEGER) AS days_ahead
     FROM membership m
     JOIN membership_type mt ON mt.type_id = m.type_id
 )
@@ -20,10 +18,9 @@ SELECT
     mp.end_date,
     mp.end_date - CURRENT_DATE                   AS days_left
 FROM membership_period mp
-CROSS JOIN params p
 JOIN client       c  ON c.client_id   = mp.client_id
 JOIN user_account ua ON ua.account_id = c.account_id
-WHERE mp.end_date BETWEEN CURRENT_DATE AND CURRENT_DATE + p.days_ahead
+WHERE mp.end_date BETWEEN CURRENT_DATE AND CURRENT_DATE + mp.days_ahead
   -- membership is paid
   AND EXISTS (
         SELECT 1
