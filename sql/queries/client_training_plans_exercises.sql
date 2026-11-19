@@ -24,6 +24,4 @@ JOIN trainer ON trainer.trainer_id = training_plan.trainer_id
 LEFT JOIN plan_exercise ON plan_exercise.plan_id = training_plan.plan_id
 LEFT JOIN exercise ON exercise.exercise_id = plan_exercise.exercise_id
 
-WHERE training_plan.client_id = params.client_id
-
 ORDER BY training_plan.valid_from DESC, training_plan.plan_id, exercise.name;
